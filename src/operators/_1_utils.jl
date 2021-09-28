@@ -4,16 +4,19 @@
 Convolution of signals `g` and `u`.
 """
 function convolve(g::Vector{T}, u::Vector{T})::Vector{T} where T <: Number
+    @assert length(g) == length(u) "Romeo.Operators.convolve: Input signals must be of the same length."
     y = similar(u)
-    for t = 1:length(u)
-        val = zero(y[t])
-        for τ = 1:t
-            val += g[t - τ + 1] * u[τ]
+    if length(y) > 0
+        @inbounds @simd for t = 1:length(u)
+            val = zero(y[t])
+            @simd for τ = 1:t
+                val += g[t - τ + 1] * u[τ]
+            end # for
+            y[t] = val
         end # for
-        y[t] = val
-    end # for
+    end # if
     return y
-end
+end # function
 
 """
     deconvolve(y, u)

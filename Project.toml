@@ -4,7 +4,9 @@ authors = ["Milan R. Rapaić <rapaja@uns.ac.rs>"]
 version = "0.1.0"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
 OhMyREPL = "5fb14364-9ced-5910-84b2-373655c76a03"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+ProgressBars = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"

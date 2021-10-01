@@ -23,16 +23,20 @@ end # function
 
 Deconvolution of signals `y` and `u`.
 """
-function deconvolve(y::Vector{T}, u::Vector{T})::Vector{T} where T <: Number
-    g = similar(u)
-    g[1] = y[1] / u[1]
-    for t = 2:length(u)
-        val = y[t]
-        for τ = 2:t
-            val -= g[t - τ + 1] * u[τ]
+function deconvolve(y::Vector{T}, u::Vector{T}) where T <: Number
+    @assert length(y) == length(u) "Romeo.Operators.deconvolve: Input signals must be of the same length."
+    g = Vector{typeof(one(T) / one(T))}(undef, size(u))
+    if length(u) > 0
+        m = one(T) / u[1]
+        g[1] = y[1] * m
+        @inbounds @simd for t = 2:length(u)
+            val = y[t]
+            @simd for τ = 2:t
+                val -= g[t - τ + 1] * u[τ]
+            end # for
+            g[t] = val * m
         end # for
-        g[t] = val / u[1]
-    end # for
+    end # if
     return g
 end # function
 

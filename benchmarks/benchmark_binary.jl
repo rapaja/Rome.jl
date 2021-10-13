@@ -9,12 +9,12 @@ import Romeo
 
 # Benchmark Convolution
 # ---------------------
-# func = Romeo.Operators.convolve
+# func = Romeo.LTI.Operators.convolve
 # filename = "benchmarks/runs/conv_N1000.jld2"
 
 # Benchmark Convolution
 # ---------------------
-func = Romeo.Operators.deconvolve
+func = Romeo.LTI.Operators.deconvolve
 filename = "benchmarks/runs/deconv_N1000.jld2"
 
 types = [Int32, Int64, Float32, Float64, ComplexF32, ComplexF64]
@@ -23,8 +23,13 @@ N = 1000
 types_iter = ProgressBar(types)
 for T in types_iter
     set_postfix(types_iter, type="$T")
-    g = rand(T, N)
-    u = rand(T, N)
+    if T <: Integer
+        g = rand(-10 * one(T):10 * one(T), N)
+        u = rand(-10 * one(T):10 * one(T), N)
+    else
+        g = rand(T, N)
+        u = rand(T, N)
+    end
     r = @benchmark func($g, $u)
     push!(results, (T, copy(r)))
 end

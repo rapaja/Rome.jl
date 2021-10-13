@@ -1,6 +1,8 @@
 module Romeo
 
-include("operators/Operators.jl")
-include("fractional/Fractional.jl")
+include("_utils.jl")
+
+include("lti/LTI.jl")
+include("optimization/Optimization.jl")
 
 end # module

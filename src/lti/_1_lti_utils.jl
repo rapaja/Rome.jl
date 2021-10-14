@@ -4,7 +4,7 @@
 Convolution of signals `g` and `u`.
 """
 function convolve(g::Vector{T}, u::Vector{T}) where T <: Number
-    @assert length(g) == length(u) "Romeo.LTI.Operators.convolve: Input signals must be of the same length."
+    @assert length(g) == length(u) "Romeo.LTI.convolve: Input signals must be of the same length."
     y = similar(u)
     if length(y) > 0
         @inbounds @simd for t = 1:length(u)
@@ -25,7 +25,7 @@ Deconvolution of signals `y` and `u`.
 Compute signal `g` such that `g ⋆ u = y`.
 """
 function deconvolve(y::Vector{T}, u::Vector{T}) where T <: Number
-    @assert length(y) == length(u) "Romeo.LTI.Operators.deconvolve: Input signals must be of the same length."
+    @assert length(y) == length(u) "Romeo.LTI.deconvolve: Input signals must be of the same length."
     g = Vector{typeof(one(T) / one(T))}(undef, size(u))
     if length(u) > 0
         m = one(T) / u[1]
@@ -55,18 +55,21 @@ function convroot(h::Vector{T}) where T <: Number
     if length(h) == 0
         g = Vector{typeof(one(T) / one(T))}(undef, size(h))
     else
-        @assert h[1] != 0 "Romeo.LTI.Operators.convroot: The initial value of the inpur signal cannot be zero."
+        @assert h[1] != 0 "Romeo.LTI.convroot: The initial value of the input signal cannot be zero."
         if T <: Real
             if h[1] > 0
                 g = Vector{typeof(one(T) / one(T))}(undef, size(h))
+                h1 = h[1]
             else
                 g = Vector{typeof(one(Complex{T}) / one(Complex{T}))}(undef, size(h))
+                h1 = complex(h[1])
             end
         else
             g = Vector{typeof(one(T) / one(T))}(undef, size(h))
+            h1 = h[1]
         end
         if length(g) > 0
-            g[1] = sqrt(h[1])
+            g[1] = sqrt(h1)
             if length(g) >= 2
                 @inbounds @simd for k = 2:length(h)
                     val = h[k]

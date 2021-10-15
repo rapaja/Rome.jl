@@ -1,10 +1,11 @@
-@testset "operators.utils tests" begin
+@testset "LTI utils tests" begin
 
     N = 10
-    types = [Int32, Int64, Float32, Float64, ComplexF32, ComplexF64] 
+    types = [Int32, Int64, Float32, Float64, ComplexF32, ComplexF64]
+    atol = 1e-2
     
     @testset "convolution/deconvolution tests" begin
-        zerotol = 0.01
+        zerotol = 5
         for T in types
             if T <: Integer
                 g = rand(-10 * one(T):10 * one(T), N)
@@ -25,7 +26,7 @@
             end
             f = Romeo.LTI.convolve(g, h)
             ga = Romeo.LTI.deconvolve(f, h)
-            @test isapprox(g, ga) || "Error for type = $T. max abs.err. = $(max(abs.(g - ga)...))"
+            @test isapprox(g, ga; atol=atol) || "Error for type = $T. max abs.err. = $(max(abs.(g - ga)...))"
         end # for
     end # testset
 
@@ -41,7 +42,7 @@
                 h = Romeo.LTI.convolve(g, g)
             end # if
             ga = Romeo.LTI.convroot(h)
-            @test isapprox(g, ga) || "Error for type = $T. max abs.err. = $(max(abs.(g - ga)...))"
+            @test isapprox(g, ga; atol=atol) || "Error for type = $T. max abs.err. = $(max(abs.(g - ga)...))"
         end # for        
     end # testset
 
@@ -56,7 +57,7 @@
             end # if
             g = Romeo.LTI.convroot(h)
             ha = Romeo.LTI.convolve(g, g)
-            @test isapprox(h, ha) || "Error for type = $T. max abs.err. = $(max(abs.(h - ha)...))"
+            @test isapprox(h, ha; atol=atol) || "Error for type = $T. max abs.err. = $(max(abs.(h - ha)...))"
         end # for        
     end # testset
 

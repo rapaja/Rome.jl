@@ -18,6 +18,14 @@ discrete convolution `k ⋆ u`.
 kernel(sys::SisoLtiSystem, N::Integer, Δt::Real) = kernel(typeof(1.0), sys, N, Δt)
 
 """
+    pprint(sys [, var="s"])
+
+Generates pretty human-readable representation of Laplace transform of the system `sys`,
+with the Laplace variable denoted by `var`. 
+"""
+pprint(sys::SisoLtiSystem) = pprint(sys, 's')
+
+"""
     kernel_to_signel(k, Δt)
 
 Given a kernel vector `k` compute the corresponding response signal.
@@ -101,11 +109,26 @@ struct SeriesSystem <: SisoLtiSystem
 end
 
 """
-    A SISO LTI system obtained by dividing two SISO LTI systems.
+    A SISO LTI system obtained by dividing two SISO LTI systems in the complex domain.
 """
 struct RationalSystem <: SisoLtiSystem
     num::SisoLtiSystem
     den::SisoLtiSystem
+end
+
+"""
+    A SISO LTI system obtained by taking the square root of another system in the complex domain.
+"""
+struct SquareRootSystem <: SisoLtiSystem
+    inner::SisoLtiSystem
+end
+
+"""
+    A SISO LTI system obtained by taking a power of another system in the complex domain.
+"""
+struct PowerSystem{T <: Number} <: SisoLtiSystem
+    α::T
+    inner::SisoLtiSystem
 end
 
 function kernel(T::Type{<:Number}, sys::Diff{<: Number}, N::Integer, Δt::Real)
@@ -137,13 +160,27 @@ kernel(T::Type{<:Number}, sys::ScaledSystem, N::Integer, Δt::Real) = sys.k * ke
 kernel(T::Type{<:Number}, sys::ParallelSystem, N::Integer, Δt::Real) = kernel(T, sys.first, N, Δt) .+ kernel(T, sys.second, N, Δt)
 kernel(T::Type{<:Number}, sys::SeriesSystem, N::Integer, Δt::Real) = convolve(kernel(T, sys.first, N, Δt), kernel(T, sys.second, N, Δt))
 kernel(T::Type{<:Number}, sys::RationalSystem, N::Integer, Δt::Real) = deconvolve(kernel(T, sys.num, N, Δt), kernel(T, sys.den, N, Δt))
+kernel(T::Type{<:Number}, sys::SquareRootSystem, N::Integer, Δt::Real) = convroot(kernel(T, sys.inner, N, Δt))
+
+function pprint(sys::Diff{<: Number}, var::Char)
+    if sys.α == 0
+        return "1"
+    elseif sys.α == 1
+        return "$var"
+    else
+        return "$var^$(sys.α)"
+    end
+end
 
 Base.:+(sys::SisoLtiSystem) = sys
+
+Base.:-(sys::ScaledSystem) = ScaledSystem(-sys.k, sys.inner)
 Base.:-(sys::SisoLtiSystem) = ScaledSystem(-1, sys)
 
 Base.:*(first::SisoLtiSystem, second::SisoLtiSystem) = SeriesSystem(first, second)
-Base.:*(sys::SisoLtiSystem, num::Number) = ScaledSystem(num, sys)
+Base.:*(num::Number, sys::ScaledSystem) = ScaledSystem(sys.k*num, sys.inner)
 Base.:*(num::Number, sys::SisoLtiSystem) = ScaledSystem(num, sys)
+Base.:*(sys::SisoLtiSystem, num::Number) = num * sys
 
 Base.:+(first::SisoLtiSystem, second::SisoLtiSystem) = ParallelSystem(first, second)
 Base.:+(sys::SisoLtiSystem, num::Number) = sys + num * Diff(0)
@@ -161,6 +198,50 @@ Base.:\(den::SisoLtiSystem, num::SisoLtiSystem) = RationalSystem(num, den)
 Base.:\(sys::SisoLtiSystem, num::Number) = RationalSystem(num * Diff(0), sys)
 Base.:\(den::Number, sys::SisoLtiSystem) = ScaledSystem(1 / den, sys)
 
+Base.sqrt(sys::SisoLtiSystem) = SquareRootSystem(sys)
+
+Base.:^(sys::Diff{T}, n::Number) where T <: Number = Diff{typeof(one(T) * n)}(sys.α * n)
+
+function Base.:^(sys::SquareRootSystem, n::Integer)
+    if n == 0
+        return Diff(0)
+    elseif  n == 1
+        return sys
+    end
+    m = abs(n)
+    G = iseven(m) ? (sys.inner)^(m/2) : sqrt(sys.inner) * (sys.inner)^((m-1)/2)
+    n>0 ? G : 1/G
+end
+
+function Base.:^(sys::SquareRootSystem, n::Number)
+    if n == 0
+        return Diff(0)
+    elseif  n == 1
+        return sys
+    end
+    if trunc(Int, n) == n
+        return sys.^trunc(Int, n)
+    else
+        return PowerSystem(n/2, sys.inner)
+    end
+end
+
+function Base.:^(sys::PowerSystem, n::Number)
+    if n == 0
+        return Diff(0)
+    elseif n == 1
+        return sys
+    end
+    α = sys.α * n;
+    if trunc(Int, α) == α
+        return sys.inner^trunc(Int, α)
+    elseif trunc(Int, 2*α) == 2*α
+        return SquareRootSystem(sys.inner)^trunc(Int, 2*α)
+    else
+        return PowerSystem(α, sys.inner)
+    end
+end
+
 function Base.:^(sys::SisoLtiSystem, n::Integer)
     if n == 0
         return Diff(0)
@@ -173,9 +254,7 @@ function Base.:^(sys::SisoLtiSystem, n::Integer)
     end
 end
 
-Base.:^(sys::Diff{T}, n::Integer) where T <: Number = Diff{typeof(one(T) * n)}(sys.α * n)
-Base.:^(sys::Diff{T}, n::Number) where T <: Number = Diff{typeof(one(T) * n)}(sys.α * n)
-
+Base.:^(sys::SisoLtiSystem, n::Number) = PowerSystem(n, sys)
 
 export SisoLtiSystem, Diff, ScaledSystem, ParallelSystem, SeriesSystem, RationalSystem
 export kernel, kernel_to_signal, impulse_resp, step_resp, simulate, invlaplace

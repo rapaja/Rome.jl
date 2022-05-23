@@ -1,3 +1,8 @@
+# LTI primitives
+#
+# Procedure for efficient numerical evaluation of convolution, deconvolution, and related
+# operators.
+
 """
     convolve(g, u)
 

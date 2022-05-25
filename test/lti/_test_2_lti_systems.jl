@@ -1,7 +1,7 @@
 @testset "LTI systems tests" begin
-        
+
     s = Romeo.LTI.Diff(1)
-    G = (s+1)/(s+2)
+    G = (s + 1) / (s + 2)
     zerosys = Romeo.LTI.ZeroSys()
     idsys = Romeo.LTI.UnitSys()
 
@@ -17,30 +17,56 @@
     end
 
     @testset "Series connection tests" begin
-        @test 1*s == s*1 == s
-        @test 0*s == s*0 == zerosys
-        @test idsys * s == s * idsys == s
-        @test zerosys * s == s * zerosys == zerosys
-        @test 2*s == s*2 == Romeo.LTI.ScaledSystem(2, s)
-        @test 4*(s*2) == Romeo.LTI.ScaledSystem(8, s)
-        @test -(8*s) == Romeo.LTI.ScaledSystem(-8, s)
-        @test (2*s)*0.5 == s
-        @test (2*s)*G == s*(2*G) == 2*(s*G)
-        @test (2*s)*(4*s) == 8*(s*s)
+        for sys in [s, G]
+            @test 1 * sys == sys * 1 == sys
+            @test 1.0 * sys == sys * 1.0 == sys
+            @test 2 * sys == 2.0 * sys == sys * 2.0 == sys * 2
+            @test 0 * sys == sys * 0 == 0.0 * sys == sys * 0.0 == zerosys
+            @test -0 * sys == -sys * 0 == -0.0 * sys == -sys * 0.0 == zerosys
+            @test idsys * sys == sys * idsys == sys
+            @test zerosys * sys == sys * zerosys == zerosys
+            @test 2 * sys == sys * 2 == Romeo.LTI.ScaledSystem(2, sys)
+            @test 4 * (sys * 2) == Romeo.LTI.ScaledSystem(8, sys)
+            @test -(8 * sys) == Romeo.LTI.ScaledSystem(-8, sys)
+            @test (2 * sys) * 0.5 == sys
+            @test (2 * sys) * (4 * sys) == 8 * (sys * sys)
+        end
+        @test (2 * s) * G == s * (2 * G) == 2 * (s * G)
     end
+
+    @testset "Square root systems tests" begin
+        for sys in [s, G]
+            @test sqrt(sys) == Romeo.LTI.SquareRootSystem(sys)
+            @test sqrt(4 * sys) == 2 * sqrt(sys)
+        end
+        @test sqrt(idsys) == idsys
+        @test sqrt(zerosys) == zerosys
+        @test sqrt(s^0.5) == s^0.25
+    end #testset
+
+    # @testset "Square root systems tests" begin
+    #     for sys in [s, G]
+    #         @test (sys^0.5) * (sys^0.25) == sys^0.75
+    #         @test (sys^0.5) * (sys^0.5) == sys
+    #         @test (sys^0.5) * (sys^(-0.5)) == idsys
+    #     end
+    # end #testset
 
     @testset "Parallel connection tests" begin
-        @test s + s == 2*s
-        @test 2*s + 4*s == 6*s
-        @test s + 2*s == 2*s + s == 3*s
-        @test s - s == zerosys
-        @test s + zerosys == zerosys + s == s
-        @test s + 0 == 0 + s == s
+        for sys in [s, G]
+            @test sys + sys == 2 * sys
+            @test 2 * sys + 4 * sys == 6 * sys
+            @test sys + 2 * sys == 2 * sys + sys == 3 * sys
+            @test sys - sys == zerosys
+            @test sys + zerosys == zerosys + sys == sys
+            @test sys + 0 == 0 + sys == sys + 0.0 == 0.0 + sys == sys
+        end
     end
 
+    @testset "Rational systems tests" begin
+        @test s / 1 == s / 1.0 == s
+        @test s / idsys == s
+    end
 
-    @testset "SquareRoot- and Power- systems tests" begin
-        
-    end #testset
 
 end # testset

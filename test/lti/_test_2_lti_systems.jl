@@ -34,24 +34,6 @@
         @test (2 * s) * G == s * (2 * G) == 2 * (s * G)
     end
 
-    @testset "Square root systems tests" begin
-        for sys in [s, G]
-            @test sqrt(sys) == Romeo.LTI.SquareRootSystem(sys)
-            @test sqrt(4 * sys) == 2 * sqrt(sys)
-        end
-        @test sqrt(idsys) == idsys
-        @test sqrt(zerosys) == zerosys
-        @test sqrt(s^0.5) == s^0.25
-    end #testset
-
-    # @testset "Square root systems tests" begin
-    #     for sys in [s, G]
-    #         @test (sys^0.5) * (sys^0.25) == sys^0.75
-    #         @test (sys^0.5) * (sys^0.5) == sys
-    #         @test (sys^0.5) * (sys^(-0.5)) == idsys
-    #     end
-    # end #testset
-
     @testset "Parallel connection tests" begin
         for sys in [s, G]
             @test sys + sys == 2 * sys
@@ -63,9 +45,52 @@
         end
     end
 
+    @testset "Square root systems tests" begin
+        for sys in [s, G]
+            @test sqrt(sys) == Romeo.LTI.SquareRootSystem(sys)
+            @test sqrt(4 * sys) == 2 * sqrt(sys)
+        end
+        @test sqrt(idsys) == idsys
+        @test sqrt(zerosys) == zerosys
+        @test sqrt(s^0.5) == s^0.25
+    end #testset
+
+    @testset "Power system tests" begin
+        orders = [0.5, 2, 2.5, 3]
+        idsys^0 == idsys^0.0 == idsys
+        zerosys^0 == zerosys^0.0 == idsys
+        for α in orders
+            @test idsys^α == idsys
+            @test zerosys^α == zerosys
+        end
+        for sys in [s, G]
+            @test sys^0 == sys^0.0 == idsys
+            @test sys^1 == sys^1.0 == sys
+            @test sys^0.5 == sqrt(sys)
+            for α in orders
+                @test (2 * sys)^α == 2^α * sys^α
+            end
+        end
+    end
+
+    # @testset "Square root systems tests" begin
+    #     for sys in [s, G]
+    #         @test (sys^0.5) * (sys^0.25) == sys^0.75
+    #         @test (sys^0.5) * (sys^0.5) == sys
+    #         @test (sys^0.5) * (sys^(-0.5)) == idsys
+    #     end
+    # end #testset
+
     @testset "Rational systems tests" begin
-        @test s / 1 == s / 1.0 == s
-        @test s / idsys == s
+        for sys in [s, G]
+            @test sys / 1 == sys / 1.0 == sys == 1 \ sys == 1.0 \ sys
+            @test sys / idsys == sys == idsys \ sys
+            # @test_throws ErrorException sys / zerosys
+            # @test_throws ErrorException zerosys \ sys
+            @test sys / sys == idsys
+        end
+        @test s / (4 * G) == 1 / 4 * s / G
+        @test (6 * s) / G == 6 * (s / G)
     end
 
 

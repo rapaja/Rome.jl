@@ -2,10 +2,24 @@
 #
 # System type hierarchy.
 
+# TODO: Remove `SquareRootSystem` from hierarchy!
+#
+#   This system type is special only regarding kernel operation.
+#   It can be handled as special case there.
+#   It only increases complexity in the rest of the code.
+
+# TODO: Parallel and series type systems should be able to have multiple inner systems instead of just two.
+
+# TODO: Consider introducing `PolynomialSystem` as a special case of `ParallelSystem`.
+
 """
     Base type representing all SISO LTI systems.
 """
 abstract type SisoLtiSystem end
+
+Base.:+(sys::SisoLtiSystem) = sys
+Base.:-(sys::SisoLtiSystem) = -1 * sys
+
 
 """
     Zero-system
@@ -64,6 +78,9 @@ ScaledSystem(k::T, inner::ScaledSystem{<:Number}) where {T<:Number} = ScaledSyst
 Base.:(==)(first::ScaledSystem{<:Number}, second::ScaledSystem{<:Number}) =
     first.inner == second.inner && first.k == second.k
 
+Base.:*(num::Number, sys::SisoLtiSystem) = ScaledSystem(num, sys)
+Base.:*(sys::SisoLtiSystem, num::Number) = num * sys
+
 """
     A SISO LTI system obtained by series connection of two other SISO LTI systems.
 """
@@ -82,6 +99,7 @@ struct SeriesSystem <: SisoLtiSystem
     SeriesSystem(first::Diff{<:Number}, second::Diff{<:Number}) = Diff(first.α + second.α)
 end
 
+Base.:*(first::SisoLtiSystem, second::SisoLtiSystem) = SeriesSystem(first, second)
 
 """
     A SISO LTI system obtained by parallel connection of two other SISO LTI systems.
@@ -98,6 +116,14 @@ struct ParallelSystem <: SisoLtiSystem
     ParallelSystem(first::ScaledSystem{<:Number}, second::ScaledSystem{<:Number}) = (first.inner == second.inner) ? (first.k + second.k) * first.inner : new(first, second)
 end
 
+Base.:+(first::SisoLtiSystem, second::SisoLtiSystem) = ParallelSystem(first, second)
+Base.:+(sys::SisoLtiSystem, num::Number) = sys + num * Diff(0)
+Base.:+(num::Number, sys::SisoLtiSystem) = sys + num
+
+Base.:-(first::SisoLtiSystem, second::SisoLtiSystem) = first + (-second)
+Base.:-(sys::SisoLtiSystem, num::Number) = sys + (-num)
+Base.:-(num::Number, sys::SisoLtiSystem) = num + (-sys)
+
 """
     A SISO LTI system obtained by taking the square root of another system in the complex domain.
 """
@@ -110,7 +136,6 @@ struct SquareRootSystem <: SisoLtiSystem
     SquareRootSystem(inner::Diff{<:Number}) = Diff(inner.α / 2)
     SquareRootSystem(inner::ScaledSystem{<:Number}) = ScaledSystem(sqrt(inner.k), sqrt(inner.inner))
 end
-
 
 Base.sqrt(sys::SisoLtiSystem) = SquareRootSystem(sys)
 
@@ -133,11 +158,11 @@ struct PowerSystem{T<:Number} <: SisoLtiSystem
         end # if
     end # function
 
-    PowerSystem{T}(α::T, inner::SisoLtiSystem) where {T<:Number} = new(α, inner)
     PowerSystem{T}(α::T, inner::ZeroSys) where {T<:Number} = (α ≠ 0) ? ZeroSys() : UnitSys()
     PowerSystem{T}(α::T, inner::UnitSys) where {T<:Number} = UnitSys()
     PowerSystem{T}(α::T, inner::Diff{<:Number}) where {T<:Number} = Diff(inner.α * α)
-    PowerSystem{T}(α::T, inner::ScaledSystem{<:Number}) where {T<:Number} = ScaledSystem(inner.k^α, inner^α)
+    PowerSystem{T}(α::T, inner::ScaledSystem{<:Number}) where {T<:Number} = ScaledSystem(inner.k^α, inner.inner^α)
+    PowerSystem{T}(α::T, inner::SquareRootSystem) where {T<:Number} = PowerSystem(α / 2, inner.inner)
 end
 
 PowerSystem(α::T, inner::SisoLtiSystem) where {T<:Number} = PowerSystem{T}(α, inner)
@@ -168,29 +193,12 @@ struct RationalSystem <: SisoLtiSystem
     RationalSystem(num::ZeroSys, den::SisoLtiSystem) = ZeroSys()
     RationalSystem(num::SisoLtiSystem, den::ScaledSystem{<:Number}) = ScaledSystem(1 / den.k, num / den.inner)
     RationalSystem(num::ScaledSystem{<:Number}, den::SisoLtiSystem) = ScaledSystem(num.k, num.inner / den)
-    RationalSystem(num::ScaledSystem{<:Number}, den::ScaledSystem{<:Number}) = ScaledSystem(num.k * den.k, num.inner * den.inner)
+    RationalSystem(num::ScaledSystem{<:Number}, den::ScaledSystem{<:Number}) = ScaledSystem(num.k / den.k, num.inner / den.inner)
     RationalSystem(num::Diff{<:Number}, den::Diff{<:Number}) = Diff(num.α - den.α)
     RationalSystem(num::SisoLtiSystem, den::PowerSystem{<:Number}) = (den.inner == num) ? PowerSystem(1 - den.α, den.inner) : new(num, den)
     RationalSystem(num::PowerSystem{<:Number}, den::SisoLtiSystem) = (num.inner == den) ? PowerSystem(num.α - 1, num.inner) : new(num, den)
     RationalSystem(num::PowerSystem{<:Number}, den::PowerSystem{<:Number}) = (num.inner == den.inner) ? PowerSystem(num.α - den.α, num.inner) : new(num, den)
 end
-
-Base.:+(sys::SisoLtiSystem) = sys
-
-Base.:-(sys::SisoLtiSystem) = ScaledSystem(-1, sys)
-Base.:-(sys::ScaledSystem) = ScaledSystem(-sys.k, sys.inner)
-
-Base.:*(first::SisoLtiSystem, second::SisoLtiSystem) = SeriesSystem(first, second)
-Base.:*(num::Number, sys::SisoLtiSystem) = ScaledSystem(num, sys)
-Base.:*(sys::SisoLtiSystem, num::Number) = num * sys
-
-Base.:+(first::SisoLtiSystem, second::SisoLtiSystem) = ParallelSystem(first, second)
-Base.:+(sys::SisoLtiSystem, num::Number) = sys + num * Diff(0)
-Base.:+(num::Number, sys::SisoLtiSystem) = sys + num * Diff(0)
-
-Base.:-(first::SisoLtiSystem, second::SisoLtiSystem) = first + (-second)
-Base.:-(sys::SisoLtiSystem, num::Number) = sys + (-num)
-Base.:-(num::Number, sys::SisoLtiSystem) = num + (-sys)
 
 Base.:/(num::SisoLtiSystem, den::SisoLtiSystem) = RationalSystem(num, den)
 Base.:/(sys::SisoLtiSystem, den::Number) = ScaledSystem(1 / den, sys)
@@ -199,60 +207,5 @@ Base.:/(num::Number, sys::SisoLtiSystem) = RationalSystem(num * Diff(0), sys)
 Base.:\(den::SisoLtiSystem, num::SisoLtiSystem) = RationalSystem(num, den)
 Base.:\(sys::SisoLtiSystem, num::Number) = RationalSystem(num * Diff(0), sys)
 Base.:\(den::Number, sys::SisoLtiSystem) = ScaledSystem(1 / den, sys)
-
-# Base.:^(sys::Diff{T}, n::Number) where {T<:Number} = Diff{typeof(one(T) * n)}(sys.α * n)
-
-# function Base.:^(sys::SquareRootSystem, n::Integer)
-#     if n == 0
-#         return Diff(0)
-#     elseif n == 1
-#         return sys
-#     end
-#     m = abs(n)
-#     G = iseven(m) ? (sys.inner)^(m / 2) : sqrt(sys.inner) * (sys.inner)^((m - 1) / 2)
-#     n > 0 ? G : 1 / G
-# end
-
-# function Base.:^(sys::SquareRootSystem, n::Number)
-#     if n == 0
-#         return Diff(0)
-#     elseif n == 1
-#         return sys
-#     end
-#     if trunc(Int, n) == n
-#         return sys .^ trunc(Int, n)
-#     else
-#         return PowerSystem(n / 2, sys.inner)
-#     end
-# end
-
-# function Base.:^(sys::PowerSystem, n::Number)
-#     if n == 0
-#         return Diff(0)
-#     elseif n == 1
-#         return sys
-#     end
-#     α = sys.α * n
-#     if trunc(Int, α) == α
-#         return sys.inner^trunc(Int, α)
-#     elseif trunc(Int, 2 * α) == 2 * α
-#         return SquareRootSystem(sys.inner)^trunc(Int, 2 * α)
-#     else
-#         return PowerSystem(α, sys.inner)
-#     end
-# end
-
-# function Base.:^(sys::SisoLtiSystem, n::Integer)
-#     if n == 0
-#         return Diff(0)
-#     elseif n == 1
-#         return sys
-#     elseif n > 1
-#         return sys * sys^(n - 1)
-#     else # negative `n`
-#         return (1 / sys)^(-n)
-#     end
-# end
-
 
 export SisoLtiSystem, Diff, ScaledSystem, ParallelSystem, SeriesSystem, RationalSystem, SquareRootSystem, PowerSystem

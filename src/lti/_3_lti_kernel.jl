@@ -17,7 +17,7 @@ discrete convolution `k ⋆ u`.
 kernel(sys::SisoLtiSystem, N::Integer, Δt::Real) = kernel(typeof(1.0), sys, N, Δt)
 
 
-function kernel(T::Type{<:Number}, sys::Diff{<: Number}, N::Integer, Δt::Real)
+function kernel(T::Type{<:Number}, sys::Diff{<:Number}, N::Integer, Δt::Real)
     if sys.α == 0
         res = zeros(T, N)
         res[1] = one(T)
@@ -33,9 +33,9 @@ function kernel(T::Type{<:Number}, sys::Diff{<: Number}, N::Integer, Δt::Real)
         return convolve(ddt, temp)
     elseif real(sys.α) < 0
         ik = t -> t^(-sys.α) * SpecialFunctions.gamma(-sys.α + 1)
-        t = 0:Δt:(N * Δt)
+        t = 0:Δt:(N*Δt)
         ikt = ik.(t)
-        return ikt[2:end] - ikt[1:end - 1]
+        return ikt[2:end] - ikt[1:end-1]
     else
         @error "Not implemented!"
     end
@@ -46,6 +46,6 @@ kernel(T::Type{<:Number}, sys::ScaledSystem, N::Integer, Δt::Real) = sys.k * ke
 kernel(T::Type{<:Number}, sys::ParallelSystem, N::Integer, Δt::Real) = kernel(T, sys.first, N, Δt) .+ kernel(T, sys.second, N, Δt)
 kernel(T::Type{<:Number}, sys::SeriesSystem, N::Integer, Δt::Real) = convolve(kernel(T, sys.first, N, Δt), kernel(T, sys.second, N, Δt))
 kernel(T::Type{<:Number}, sys::RationalSystem, N::Integer, Δt::Real) = deconvolve(kernel(T, sys.num, N, Δt), kernel(T, sys.den, N, Δt))
-kernel(T::Type{<:Number}, sys::SquareRootSystem, N::Integer, Δt::Real) = convroot(kernel(T, sys.inner, N, Δt))
+# kernel(T::Type{<:Number}, sys::SquareRootSystem, N::Integer, Δt::Real) = convroot(kernel(T, sys.inner, N, Δt))
 
 export kernel

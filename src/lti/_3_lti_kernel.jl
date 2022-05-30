@@ -16,6 +16,8 @@ discrete convolution `k ⋆ u`.
 """
 kernel(sys::SisoLtiSystem, N::Integer, Δt::Real) = kernel(typeof(1.0), sys, N, Δt)
 
+kernel(T::Type{<:Number}, sys::ZeroSys, N::Integer, Δt::Real) = zeros(T, N)
+kernel(T::Type{<:Number}, sys::UnitSys, N::Integer, Δt::Real) = convid(T, N)
 
 function kernel(T::Type{<:Number}, sys::Diff{<:Number}, N::Integer, Δt::Real)
     if sys.α == 0

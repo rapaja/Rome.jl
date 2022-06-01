@@ -14,7 +14,6 @@ abstract type SisoLtiSystem end
 Base.:+(sys::SisoLtiSystem) = sys
 Base.:-(sys::SisoLtiSystem) = -1 * sys
 
-
 """
     Zero-system
     

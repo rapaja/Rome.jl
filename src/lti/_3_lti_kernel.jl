@@ -19,7 +19,9 @@ kernel(sys::SisoLtiSystem, N::Integer, Δt::Real) = kernel(typeof(1.0), sys, N, 
 kernel(T::Type{<:Number}, sys::ZeroSys, N::Integer, Δt::Real) = zeros(T, N)
 kernel(T::Type{<:Number}, sys::UnitSys, N::Integer, Δt::Real) = convid(T, N)
 
+
 function kernel(T::Type{<:Number}, sys::Diff{<:Number}, N::Integer, Δt::Real)
+    @assert N ≥ 1 "Kernel should be at least one sample long"
     if sys.α == 0
         res = zeros(T, N)
         res[1] = one(T)
@@ -30,14 +32,13 @@ function kernel(T::Type{<:Number}, sys::Diff{<:Number}, N::Integer, Δt::Real)
         res[2] = -one(T)
         return res / Δt
     elseif real(sys.α) > 0
+        # TODO: fix this branch
         ddt = kernel(T, Diff(one(typeof(sys.α))), N, Δt)
         temp = kernel(T, Diff(sys.α - 1), N, Δt)
         return convolve(ddt, temp)
     elseif real(sys.α) < 0
-        ik = t -> t^(-sys.α) * SpecialFunctions.gamma(-sys.α + 1)
-        t = 0:Δt:(N*Δt)
-        ikt = ik.(t)
-        return ikt[2:end] - ikt[1:end-1]
+        ikt = (0:N) .^ (-sys.α)
+        return (ikt[2:end] - ikt[1:end-1]) .* (Δt^(-sys.α) / SpecialFunctions.gamma(-sys.α + 1))
     else
         @error "Not implemented!"
     end

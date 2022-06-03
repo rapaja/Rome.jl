@@ -44,11 +44,41 @@ function kernel(T::Type{<:Number}, sys::Diff{<:Number}, N::Integer, Δt::Real)
     end
 end
 
-
 kernel(T::Type{<:Number}, sys::ScaledSystem, N::Integer, Δt::Real) = sys.k * kernel(T, sys.inner, N, Δt)
 kernel(T::Type{<:Number}, sys::ParallelSystem, N::Integer, Δt::Real) = kernel(T, sys.first, N, Δt) .+ kernel(T, sys.second, N, Δt)
 kernel(T::Type{<:Number}, sys::SeriesSystem, N::Integer, Δt::Real) = convolve(kernel(T, sys.first, N, Δt), kernel(T, sys.second, N, Δt))
 kernel(T::Type{<:Number}, sys::RationalSystem, N::Integer, Δt::Real) = deconvolve(kernel(T, sys.num, N, Δt), kernel(T, sys.den, N, Δt))
-# kernel(T::Type{<:Number}, sys::SquareRootSystem, N::Integer, Δt::Real) = convroot(kernel(T, sys.inner, N, Δt))
+
+function kernel(T::Type{<:Number}, sys::PowerSystem{<:Number}, N::Integer, Δt::Real)
+    if imag(sys.α ≠ 0)
+        @error "Cannot compute kernel of a complex power of an arbitrary system."
+    end
+    α = real(sys.α)
+    if α > 0
+        if floor(α) == α
+            k1 = kernel(T, sys.inner, N, Δt)
+            k = copy(k)
+            for i = 2:floor(Int, sys.α)
+                k = convolve(k, k1)
+            end
+            return k
+        else
+            h = floor(Int, α)
+            r = α - h
+            if r == 0.5
+                k1 = convroot(kernel(T, sys.inner, N, Δt))
+                k = copy(k)
+                for i = 2 * floor(Int, h) + 1
+                    k = convolve(k, k1)
+                end
+                return k
+            else
+                @error "Unable to compute kernel of this power system."
+            end
+        end
+    else
+        convinv(kernel(T, PowerSystem(-sys.α, sys.inner), N, Δt))
+    end
+end
 
 export kernel

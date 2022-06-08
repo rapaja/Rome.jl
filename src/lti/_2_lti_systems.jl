@@ -164,14 +164,20 @@ struct RationalSystem <: SisoLtiSystem
     end
 
     RationalSystem(num::SisoLtiSystem, den::UnitSys) = num
-    RationalSystem(num::UnitSys, den::SisoLtiSystem) = PowerSystem(-1, den)
     RationalSystem(num::SisoLtiSystem, den::ZeroSys) = @error "Cannot create rational systems with zero denominator."
-    RationalSystem(num::ZeroSys, den::SisoLtiSystem) = ZeroSys()
     RationalSystem(num::SisoLtiSystem, den::ScaledSystem{<:Number}) = ScaledSystem(1 / den.k, num / den.inner)
+    RationalSystem(num::SisoLtiSystem, den::PowerSystem{<:Number}) = (den.inner == num) ? PowerSystem(1 - den.α, den.inner) : new(num, den)
+
+    RationalSystem(num::UnitSys, den::SisoLtiSystem) = PowerSystem(-1, den)
+    RationalSystem(num::ZeroSys, den::SisoLtiSystem) = ZeroSys()
+
     RationalSystem(num::ScaledSystem{<:Number}, den::SisoLtiSystem) = ScaledSystem(num.k, num.inner / den)
     RationalSystem(num::ScaledSystem{<:Number}, den::ScaledSystem{<:Number}) = ScaledSystem(num.k / den.k, num.inner / den.inner)
     RationalSystem(num::Diff{<:Number}, den::Diff{<:Number}) = Diff(num.α - den.α)
-    RationalSystem(num::SisoLtiSystem, den::PowerSystem{<:Number}) = (den.inner == num) ? PowerSystem(1 - den.α, den.inner) : new(num, den)
+
+
+    RationalSystem(num::PowerSystem{<:Number}, den::UnitSys) = num
+    RationalSystem(num::UnitSys, den::PowerSystem{<:Number}) = PowerSystem(-den.α, den.inner)
     RationalSystem(num::PowerSystem{<:Number}, den::SisoLtiSystem) = (num.inner == den) ? PowerSystem(num.α - 1, num.inner) : new(num, den)
     RationalSystem(num::PowerSystem{<:Number}, den::PowerSystem{<:Number}) = (num.inner == den.inner) ? PowerSystem(num.α - den.α, num.inner) : new(num, den)
 

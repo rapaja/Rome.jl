@@ -1,7 +1,9 @@
 @testset "LTI systems tests" begin
 
     s = Romeo.LTI.Diff(1)
+    H = 1 / (s + 1)
     G = (s + 1) / (s + 2)
+
     zerosys = Romeo.LTI.ZeroSys()
     idsys = Romeo.LTI.UnitSys()
 
@@ -35,7 +37,7 @@
     end
 
     @testset "Parallel connection tests" begin
-        for sys in [s, G]
+        for sys in [s, G, H]
             @test sys + sys == 2 * sys
             @test 2 * sys + 4 * sys == 6 * sys
             @test sys + 2 * sys == 2 * sys + sys == 3 * sys
@@ -64,11 +66,12 @@
             for α in orders
                 @test (2 * sys)^α == 2^α * sys^α
             end
+            @test (sys^2)^3 == sys^6
         end
     end
 
     @testset "Rational systems tests" begin
-        for sys in [s, G]
+        for sys in [s, G, H]
             @test sys / 1 == sys / 1.0 == sys == 1 \ sys == 1.0 \ sys
             @test sys / idsys == sys == idsys \ sys
             # @test_throws ErrorException sys / zerosys
